@@ -1,0 +1,19 @@
+{
+  "name": "jsonparse",
+  "version": "1.0.0",
+  "description": "test for Json",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giladwind/testJson.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/giladwind/testJson/issues"
+  },
+  "homepage": "https://github.com/giladwind/testJson#readme"
+}
