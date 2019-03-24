@@ -26,10 +26,65 @@
             let obj = ParseStringSection(stringData);
         }
 
+        var numbers = "1234567890.-";
         function ParseStringSection(section) {
+            let propertyName = '';
+            let valueAsString = '';
+            let index = 1;
+            let ret = {};
             
-        }
+            let endOfObject = false;
+            debugger;
+            while (index < section.length) {
+                propertyName = getPropertyName(section.substr(index));
+                if(propertyName){
+                    index+= propertyName.length;
+                    if(section[index] === ' ') index++;
+                    if(section[index] === "'" ||  section[index] === '"' ){
+                        // get string value 
+                        valueAsString = getStringValue(section.substr(index));
+                        ret[propertyName.name] = valueAsString.stringValue;
+                        index+=valueAsString.length;
+                    }
+                    else if(numbers.indexOf(section[index])!== -1){
+                        // get number value
+                    }
+                    else if(section[index] === '['){
+                        // array
+                    }
+                    else if(section[index] === "{"){
+                        // object
+                    }
+                }
+                else{
 
+                }
+                index++;
+            }
+        }
+        function getPropertyName(stringData){
+            let index =stringData.indexOf(':'); 
+            let namePart = index !== -1 ? stringData.substr(0,index).trim() : null;
+            if(namePart && namePart.length > 2){
+                return  { name : namePart.substr(1,namePart.length-2) , length : index +1};
+            }
+            return null;
+        }
+        function getStringValue(stringData ){
+            let openChar = stringData[0];
+            let index= 1;
+            let foundEndString = false;
+            while(foundEndString === false && index < stringData.length){
+                if(stringData[index] === stringData[0] && stringData[index-1] !== '\\' ) foundEndString = true;
+                else index ++;
+            }
+            return { stringValue : stringData.substr(1,index-1) , length : index +1 };
+        }
+        function getNumberValue(stringData){
+
+        }
+        
+        JSONparse(jsonString);
 
     </script>
 </body>
