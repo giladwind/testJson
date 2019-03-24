@@ -20,6 +20,12 @@
         var handlerArray = [];
         var parserSettings = { testStringForDate: true, mustBeJSON: false };
 
+        
+        function skipWhiteSpace(stringData, startIndex){
+          let counter=0;
+          while(stringData && stringData[startIndex+counter] === ' ' && startIndex+counter < stringData.length) counter++;
+          return counter;
+        }
         /* create value parsing handler object */
         function CreateHandler(openChar, handler, description) {
             this.openChar = openChar;
@@ -73,8 +79,8 @@
             let retValue = [];
             let counter = 1;
             let endOfArrayFound = false;
-            while (stringData && startIndex + counter < stringData.length && !endOfArrayFound) {
-                while (stringData[startIndex + counter] === ' ') counter++;
+            while (stringData && startIndex + counter < stringData.length && !endOfArrayFound) {                
+                counter+=skipWhiteSpace(stringData,startIndex+counter);
                 let valueObject = getValue(stringData, startIndex + counter);
                 if (valueObject) {
                     retValue = [...retValue, valueObject.value];
@@ -82,8 +88,8 @@
                 }
                 else {
                     throw (`Error parsing object at index ${startIndex + counter}`);
-                }
-                while (stringData[startIndex + counter] === ' ') counter++;
+                }                
+                counter+=skipWhiteSpace(stringData,startIndex+counter);
                 if (stringData[startIndex + counter] === ']') {
                     endOfArrayFound = true;
                 }
@@ -110,8 +116,8 @@
                     throw (`Error in input params ${stringData}`);
                 }
             }
-            let counter = 0;
-            while (stringData[startIndex + counter] === ' ') counter++;
+            let counter = 0;            
+            counter+=skipWhiteSpace(stringData,startIndex+counter);
             let handler = null;
             for (var i = 0; i < handlerArray.length && handler === null; i++) {
                 handler = handlerArray[i].isHandeling(stringData[startIndex + counter]) ? handlerArray[i] : null;
@@ -160,21 +166,21 @@
             while (stringData && startIndex + counter < stringData.length && !endOfObjectFound) {
                 pname = getPropertyName(stringData, startIndex + counter);
                 if (pname) {
-                    counter += pname.length;
-                    while (stringData[startIndex + counter] === ' ') counter++;
+                    counter += pname.length;                    
+                    counter+=skipWhiteSpace(stringData,startIndex+counter);
                     var valueObject = getValue(stringData, startIndex + counter);
                     retObject[pname.name] = valueObject.value;
                     counter += valueObject.length;
                 }
-                else {
-                    while (stringData[startIndex + counter] === ' ') counter++;
+                else {                    
+                    counter+=skipWhiteSpace(stringData,startIndex+counter);
                     endOfObjectFound = stringData[startIndex + counter] === '}';
                     if (!endOfObjectFound) {
                         throw (`Error parsing object at index ${startIndex + counter}`);
                     }
 
-                }
-                while (stringData[startIndex + counter] === ' ') counter++;
+                }                
+                counter+=skipWhiteSpace(stringData,startIndex+counter);
                 if (stringData[startIndex + counter] === ',') {
                     counter++;
                 }
