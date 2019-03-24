@@ -12,7 +12,7 @@
             prop4: new Date(Date.now()),
             prop5: [1, 2, 3, 4, 5, "sdfsdf"],
             prop6: { name: 'gilad', test: 123 },
-            prop7: [{ name: 'gilad1', test: 123 }, { name: 'gilad2', test: 123 }, { name: 'gilad3', test: 123 }]
+            prop7: [{ name: 'gilad1', test: 123, arr: [1, "dfdf", { name: 'gilad' }] }, { name: 'gilad2', test: 123 }, { name: 'gilad3', test: 123 }]
         };
 
         let jsonString = `{prop1:"string","prop2": -123 ,"prop4":"2019-03-24T10:17:12.538Z","prop5":[1,2,3,4,5],"prop6":{"name":"gilad","test":123},"prop7":[{"name":"gilad1","test":123},{"name":"gilad2","test":123},{"name":"gilad3","test":123}]}`;
@@ -122,7 +122,6 @@
                 throw (`Error parsing object at index ${startIndex + counter}`);
             }
         }
-
         /* object Start */
 
         var propertyNameOpenChars = `"'`;
@@ -143,7 +142,6 @@
                 pnamePart = pnamePart.substr(1, pnamePart.length - 2);
             }
             return { name: pnamePart, length: counter + 1 };
-
         }
 
         function getObjectValue(stringData, startIndex) {
@@ -185,24 +183,21 @@
 
         handlerArray.push(new CreateHandler('{', getObjectValue, 'Objects'));
         /* object End */
-
-
         function JSONparse(stringData) {
             if (!stringData || typeof stringData !== 'string' || stringData.length === 0 || !stringData.startsWith('{')) {
                 return null;
             }
-
             var valueObject = getObjectValue(stringData, 0);
             if (valueObject) return valueObject.value;
             return null;
-
-            //let obj = ParseStringSection(stringData);
         }
 
         console.log(JSONparse(JSON.stringify({ name: 'gilad', number: 123, 'test': -44, obj: { inner1: 123 }, arr: [1, 2, 3] })));
 
 
         console.log(JSONparse(jsonString));
+        console.log(JSONparse(JSON.stringify(tmp)));
+        //tmp
 
     </script>
 </body>
