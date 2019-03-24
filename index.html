@@ -18,7 +18,7 @@
         let jsonString = `{prop1:"string","prop2": -123 ,"prop4":"2019-03-24T10:17:12.538Z","prop5":[1,2,3,4,5],"prop6":{"name":"gilad","test":123},"prop7":[{"name":"gilad1","test":123},{"name":"gilad2","test":123},{"name":"gilad3","test":123}]}`;
 
         var handlerArray = [];
-        var parserSettings = { testStringForDate: true };
+        var parserSettings = { testStringForDate: true, mustBeJSON: false };
 
         /* create value parsing handler object */
         function CreateHandler(openChar, handler, description) {
@@ -103,7 +103,12 @@
         function getValue(stringData, startIndex) {
             startIndex = startIndex ? startIndex : 0;
             if (!stringData || typeof stringData !== 'string' || stringData.length === 0) {
-                throw(`Error in input params ${stringData}`);
+                throw (`Error in input params ${stringData}`);
+            }
+            if (startIndex === 0 && parserSettings.mustBeJSON) {
+                if (stringData[0] !== '{') {
+                    throw (`Error in input params ${stringData}`);
+                }
             }
             let counter = 0;
             while (stringData[startIndex + counter] === ' ') counter++;
