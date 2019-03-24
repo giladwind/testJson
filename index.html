@@ -14,16 +14,16 @@
             prop6: { name: 'gilad', test: 123 },
             prop7: [{ name: 'gilad1', test: 123 }, { name: 'gilad2', test: 123 }, { name: 'gilad3', test: 123 }]
         };
-        console.log(tmp);
+        
         let jsonString = `{"prop1":"string","prop2": -123 ,"prop4":"2019-03-24T10:17:12.538Z","prop5":[1,2,3,4,5],"prop6":{"name":"gilad","test":123},"prop7":[{"name":"gilad1","test":123},{"name":"gilad2","test":123},{"name":"gilad3","test":123}]}`;
 
         var handlerArray = [];
 
         /* create value parsing handler object */
-        function CreateHandler(openChar, handler,description) {
+        function CreateHandler(openChar, handler, description) {
             this.openChar = openChar;
             this.handler = handler;
-            this.description = description; 
+            this.description = description;
             this.isHandeling = (testVal) => { return this.openChar.indexOf(testVal) !== -1; }
         }
         /* string start */
@@ -37,7 +37,7 @@
             }
             return { value: stringData.substr(startIndex + 1, counter - 1), length: counter + 1 };
         }
-        handlerArray.push(new CreateHandler('\'"', getStringValue,'String'));
+        handlerArray.push(new CreateHandler('\'"', getStringValue, 'String'));
         /* string end */
         /* number start */
         var numbers = "1234567890.-+";
@@ -49,10 +49,67 @@
                 counter++;
             }
             let numberString = stringData.substr(startIndex, counter);
-            return { value: isFloat ? Number.parseFloat(numberString) : Number.parseInt(numberString), length: counter };
+            return { value: isFloat ? Number.parseFloat(numberString) : Number.parseInt(numberString), length: counter  };
         }
-        handlerArray.push(new CreateHandler(numbers, getNumberValue,'Number'));
+        handlerArray.push(new CreateHandler(numbers, getNumberValue, 'Number'));
         /* number end */
+
+
+        /* array start */
+        function getArrayValue(stringData, startIndex) {
+            
+            let retValue = [];
+            let counter = 1;
+            let endOfArrayFound = false;
+            while (stringData && startIndex + counter < stringData.length && !endOfArrayFound) {
+                while (stringData[startIndex + counter] === ' ') counter++;
+                let valueObject = getValue(stringData, startIndex + counter);
+                if (valueObject) {
+                    retValue = [...retValue, valueObject.value];
+                    counter += valueObject.length
+                }
+                else {
+                    throw (`Error parsing object at index ${startIndex + counter}`);
+                }
+                while (stringData[startIndex + counter] === ' ') counter++;
+                if (stringData[startIndex + counter] === ']') {
+                    endOfArrayFound = true;
+                }
+                else if (stringData[startIndex + counter] === ',') {
+                    counter++;
+                }
+                else {
+                    throw (`Error parsing object at index ${startIndex + counter}`);
+                }
+            }
+            
+            return { value: retValue, length: counter +1 };
+        }
+        handlerArray.push(new CreateHandler('[', getArrayValue, 'Arrays'));
+        /* array end  */
+
+        function getValue(stringData, startIndex) {
+            
+            let counter = 0;
+            while (stringData[startIndex + counter] === ' ') counter++;
+            let handler = null;
+            for (var i = 0; i < handlerArray.length && handler === null; i++) {
+                handler = handlerArray[i].isHandeling(stringData[startIndex + counter]) ? handlerArray[i] : null;
+            }
+            if (handler) {
+                var valueObject = handler.handler(stringData, startIndex + counter);
+
+                if (valueObject) {
+                    return valueObject;
+                }
+                else {
+                    throw (`Error parsing object at index ${startIndex + counter}`);
+                }
+            }
+            else {
+                throw (`Error parsing object at index ${startIndex + counter}`);
+            }
+        }
 
         /* object Start */
 
@@ -78,40 +135,43 @@
         }
 
         function getObjectValue(stringData, startIndex) {
-            debugger;
             let counter = 1;
             let retObject = {};
             let pname = null;
-            while (stringData && startIndex + counter < stringData.length) {
+            let endOfObjectFound = false;
+            while (stringData && startIndex + counter < stringData.length && !endOfObjectFound) {
                 pname = getPropertyName(stringData, startIndex + counter);
                 if (pname) {
-                    debugger;
                     counter += pname.length;
                     while (stringData[startIndex + counter] === ' ') counter++;
-                    let handler = null;
-                    for (var i = 0; i < handlerArray.length && handler === null; i++) {
-                        handler = handlerArray[i].isHandeling(stringData[startIndex+counter]) ? handlerArray[i] : null; 
-                    }
-                    if(handler){
-                        var valueObject = handler.handler(stringData,startIndex+counter);
-                        if(valueObject){
-                            retObject[pname.name] = valueObject.value;
-                            counter+=valueObject.length;
-                        }
-                        else{
-                            // Error
-                        }
-                    }
-                    else{
-                        // not found !! Error all is dead !!!
-                    }
+                    var valueObject = getValue(stringData, startIndex + counter);
+                    retObject[pname.name] = valueObject.value;
+                    counter += valueObject.length;
                 }
-                else{
-                    
+                else {
+                    while (stringData[startIndex + counter] === ' ') counter++;
+                    endOfObjectFound = stringData[startIndex + counter] === '}';
+                    if (!endOfObjectFound) {
+                        throw (`Error parsing object at index ${startIndex + counter}`);
+                    }
+
                 }
-                counter++;
+                while (stringData[startIndex + counter] === ' ') counter++;
+                if (stringData[startIndex + counter] === ',') {
+                    counter++;
+                }
+                else if (stringData[startIndex + counter] === '}') {
+                    endOfObjectFound = true;
+                }
+                else {
+                    throw (`Error parsing object at index ${startIndex + counter}`);
+                }
             }
+            
+            return { value: retObject, length: counter +1 };
         }
+
+        handlerArray.push(new CreateHandler('{', getObjectValue, 'Objects'));
         /* object End */
 
 
@@ -119,56 +179,18 @@
             if (!stringData || typeof stringData !== 'string' || stringData.length === 0 || !stringData.startsWith('{')) {
                 return null;
             }
-            getObjectValue(stringData,0);
+            
+            var valueObject = getObjectValue(stringData, 0);
+            if(valueObject) return valueObject.value;
+            return null;
+            
             //let obj = ParseStringSection(stringData);
         }
 
-
-        function ParseStringSection(section) {
-            let propertyName = '';
-            let valueData = null;
-            let index = 1;
-            let ret = {};
-
-            let endOfObject = false;
-            debugger;
-            while (index < section.length) {
-                if (section[index] === ',' || section[index] === ' ') index++;
-                propertyName = getPropertyName(section, index);
-                if (propertyName) {
-                    debugger;
-                    index += propertyName.length;
-                    while (section[index] === ' ') { index++; }
-                    if (section[index] === "'" || section[index] === '"') {
-                        valueData = getStringValue(section, index);
-                        ret[propertyName.name] = valueData.value;
-                        index += valueData.length;
-                    }
-                    else if (numbers.indexOf(section[index]) !== -1) {
-                        debugger;
-                        valueData = getNumberValue(section, index);
-                        ret[propertyName.name] = valueData.value;
-                        index += valueData.length;
-                        // get number value
-                    }
-                    else if (section[index] === '[') {
-                        // array
-                    }
-                    else if (section[index] === "{") {
-                        // object
-                    }
-                }
-                else {
-
-                }
-
-            }
-        }
+       console.log( JSONparse(JSON.stringify({ name: 'gilad', number: 123, 'test': -44, obj: { inner1: 123 }, arr: [1, 2, 3] })));
 
 
-
-
-        JSONparse(jsonString);
+       console.log(  JSONparse(jsonString));
 
     </script>
 </body>
