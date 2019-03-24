@@ -26,7 +26,7 @@
             let obj = ParseStringSection(stringData);
         }
 
-        var numbers = "1234567890.-";
+        var numbers = "1234567890.-+";
         function ParseStringSection(section) {
             let propertyName = '';
             let valueAsString = '';
@@ -36,10 +36,11 @@
             let endOfObject = false;
             debugger;
             while (index < section.length) {
+                if(section[index] === ',') index++;
                 propertyName = getPropertyName(section.substr(index));
                 if(propertyName){
                     index+= propertyName.length;
-                    if(section[index] === ' ') index++;
+                    while(section[index] === ' ') {index++;}
                     if(section[index] === "'" ||  section[index] === '"' ){
                         // get string value 
                         valueAsString = getStringValue(section.substr(index));
@@ -81,7 +82,12 @@
             return { stringValue : stringData.substr(1,index-1) , length : index +1 };
         }
         function getNumberValue(stringData){
-
+            let index =0;
+            while(numbers.indexOf( stringData[index]) !== -1 && index < stringData.length){
+                index ++;
+            }
+            let numberString = stringData.substr(0,index);
+            debugger;
         }
         
         JSONparse(jsonString);
