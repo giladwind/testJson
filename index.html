@@ -10,86 +10,164 @@
             prop1: 'string',
             prop2: -123,
             prop4: new Date(Date.now()),
-            prop5: [1, 2, 3, 4, 5],
+            prop5: [1, 2, 3, 4, 5, "sdfsdf"],
             prop6: { name: 'gilad', test: 123 },
             prop7: [{ name: 'gilad1', test: 123 }, { name: 'gilad2', test: 123 }, { name: 'gilad3', test: 123 }]
         };
         console.log(tmp);
         let jsonString = `{"prop1":"string","prop2": -123 ,"prop4":"2019-03-24T10:17:12.538Z","prop5":[1,2,3,4,5],"prop6":{"name":"gilad","test":123},"prop7":[{"name":"gilad1","test":123},{"name":"gilad2","test":123},{"name":"gilad3","test":123}]}`;
 
+        var handlerArray = [];
+
+        /* create value parsing handler object */
+        function CreateHandler(openChar, handler,description) {
+            this.openChar = openChar;
+            this.handler = handler;
+            this.description = description; 
+            this.isHandeling = (testVal) => { return this.openChar.indexOf(testVal) !== -1; }
+        }
+        /* string start */
+        function getStringValue(stringData, startIndex) {
+            let openChar = stringData[startIndex];
+            let counter = 1;
+            let foundEndString = false;
+            while (foundEndString === false && startIndex + counter < stringData.length) {
+                if (stringData[startIndex + counter] === stringData[startIndex] && stringData[startIndex + counter - 1] !== '\\') foundEndString = true;
+                else counter++;
+            }
+            return { value: stringData.substr(startIndex + 1, counter - 1), length: counter + 1 };
+        }
+        handlerArray.push(new CreateHandler('\'"', getStringValue,'String'));
+        /* string end */
+        /* number start */
+        var numbers = "1234567890.-+";
+        function getNumberValue(stringData, startIndex) {
+            let isFloat = false;
+            let counter = 0;
+            while (numbers.indexOf(stringData[startIndex + counter]) !== -1 && startIndex + counter < stringData.length) {
+                if (stringData[startIndex + counter] === '.') isFloat = true;
+                counter++;
+            }
+            let numberString = stringData.substr(startIndex, counter);
+            return { value: isFloat ? Number.parseFloat(numberString) : Number.parseInt(numberString), length: counter };
+        }
+        handlerArray.push(new CreateHandler(numbers, getNumberValue,'Number'));
+        /* number end */
+
+        /* object Start */
+
+        var propertyNameOpenChars = `"'`;
+        var propertyNameErrorhars = `{[}]`;
+        function getPropertyName(stringData, startIndex) {
+            let counter = 0;
+            let found = false;
+            let hasError = false;
+
+            while (!found && !hasError && startIndex + counter < stringData.length) {
+                if (stringData[startIndex + counter] === ':') found = true;
+                else if (propertyNameErrorhars.indexOf(stringData[startIndex + counter]) !== -1) hasError = true;
+                else counter++;
+            }
+            if (!found | hasError) return null;
+            let pnamePart = stringData.substr(startIndex, counter);
+            if (propertyNameOpenChars.indexOf(pnamePart[0]) !== -1 && pnamePart[0] === pnamePart[pnamePart.length - 1]) {
+                pnamePart = pnamePart.substr(1, pnamePart.length - 2);
+            }
+            return { name: pnamePart, length: counter + 1 };
+
+        }
+
+        function getObjectValue(stringData, startIndex) {
+            debugger;
+            let counter = 1;
+            let retObject = {};
+            let pname = null;
+            while (stringData && startIndex + counter < stringData.length) {
+                pname = getPropertyName(stringData, startIndex + counter);
+                if (pname) {
+                    debugger;
+                    counter += pname.length;
+                    while (stringData[startIndex + counter] === ' ') counter++;
+                    let handler = null;
+                    for (var i = 0; i < handlerArray.length && handler === null; i++) {
+                        handler = handlerArray[i].isHandeling(stringData[startIndex+counter]) ? handlerArray[i] : null; 
+                    }
+                    if(handler){
+                        var valueObject = handler.handler(stringData,startIndex+counter);
+                        if(valueObject){
+                            retObject[pname.name] = valueObject.value;
+                            counter+=valueObject.length;
+                        }
+                        else{
+                            // Error
+                        }
+                    }
+                    else{
+                        // not found !! Error all is dead !!!
+                    }
+                }
+                else{
+                    
+                }
+                counter++;
+            }
+        }
+        /* object End */
 
 
         function JSONparse(stringData) {
             if (!stringData || typeof stringData !== 'string' || stringData.length === 0 || !stringData.startsWith('{')) {
                 return null;
             }
-            let obj = ParseStringSection(stringData);
+            getObjectValue(stringData,0);
+            //let obj = ParseStringSection(stringData);
         }
 
-        var numbers = "1234567890.-+";
+
         function ParseStringSection(section) {
             let propertyName = '';
-            let valueAsString = '';
+            let valueData = null;
             let index = 1;
             let ret = {};
-            
+
             let endOfObject = false;
             debugger;
             while (index < section.length) {
-                if(section[index] === ',') index++;
-                propertyName = getPropertyName(section.substr(index));
-                if(propertyName){
-                    index+= propertyName.length;
-                    while(section[index] === ' ') {index++;}
-                    if(section[index] === "'" ||  section[index] === '"' ){
-                        // get string value 
-                        valueAsString = getStringValue(section.substr(index));
-                        ret[propertyName.name] = valueAsString.stringValue;
-                        index+=valueAsString.length;
+                if (section[index] === ',' || section[index] === ' ') index++;
+                propertyName = getPropertyName(section, index);
+                if (propertyName) {
+                    debugger;
+                    index += propertyName.length;
+                    while (section[index] === ' ') { index++; }
+                    if (section[index] === "'" || section[index] === '"') {
+                        valueData = getStringValue(section, index);
+                        ret[propertyName.name] = valueData.value;
+                        index += valueData.length;
                     }
-                    else if(numbers.indexOf(section[index])!== -1){
+                    else if (numbers.indexOf(section[index]) !== -1) {
+                        debugger;
+                        valueData = getNumberValue(section, index);
+                        ret[propertyName.name] = valueData.value;
+                        index += valueData.length;
                         // get number value
                     }
-                    else if(section[index] === '['){
+                    else if (section[index] === '[') {
                         // array
                     }
-                    else if(section[index] === "{"){
+                    else if (section[index] === "{") {
                         // object
                     }
                 }
-                else{
+                else {
 
                 }
-                index++;
+
             }
         }
-        function getPropertyName(stringData){
-            let index =  stringData.indexOf(':'); 
-            let namePart = index !== -1 ? stringData.substr(0,index).trim() : null;
-            if(namePart && namePart.length > 2){
-                return  { name : namePart.substr(1,namePart.length-2) , length : index +1};
-            }
-            return null;
-        }
-        function getStringValue(stringData ){
-            let openChar = stringData[0];
-            let index= 1;
-            let foundEndString = false;
-            while(foundEndString === false && index < stringData.length){
-                if(stringData[index] === stringData[0] && stringData[index-1] !== '\\' ) foundEndString = true;
-                else index ++;
-            }
-            return { stringValue : stringData.substr(1,index-1) , length : index +1 };
-        }
-        function getNumberValue(stringData){
-            let index =0;
-            while(numbers.indexOf( stringData[index]) !== -1 && index < stringData.length){
-                index ++;
-            }
-            let numberString = stringData.substr(0,index);
-            debugger;
-        }
-        
+
+
+
+
         JSONparse(jsonString);
 
     </script>
