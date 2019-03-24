@@ -219,8 +219,10 @@
         })();
 
         console.log(JSONParse.parse(JSON.stringify({ name: 'gilad', number: 123, 'test': -44, obj: { inner1: 123 }, arr: [1, 2, 3] })));
+        console.log('date will be date');
         console.log(JSONParse.parse(jsonString));
-        console.log(JSONParse.parse(JSON.stringify(tmp)));
+        console.log('date will be string');
+        console.log(JSONParse.parse(JSON.stringify(tmp),{}));
         console.log(JSONParse.parse("\"gilad\""));
         console.log(JSONParse.parse("1234"));
         console.log(JSONParse.parse("[1234,'gggg',{aaa: 'sdfsdf'}]"));
