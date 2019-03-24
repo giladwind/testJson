@@ -101,7 +101,10 @@
         /* array end  */
 
         function getValue(stringData, startIndex) {
-
+            startIndex = startIndex ? startIndex : 0;
+            if (!stringData || typeof stringData !== 'string' || stringData.length === 0) {
+                throw(`Error in input params ${stringData}`);
+            }
             let counter = 0;
             while (stringData[startIndex + counter] === ' ') counter++;
             let handler = null;
@@ -184,10 +187,7 @@
         handlerArray.push(new CreateHandler('{', getObjectValue, 'Objects'));
         /* object End */
         function JSONparse(stringData) {
-            if (!stringData || typeof stringData !== 'string' || stringData.length === 0 || !stringData.startsWith('{')) {
-                return null;
-            }
-            var valueObject = getValue(stringData, 0);
+            var valueObject = getValue(stringData);
             if (valueObject) return valueObject.value;
             return null;
         }
