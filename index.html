@@ -17,200 +17,213 @@
 
         let jsonString = `{prop1:"string","prop2": -123 ,"prop4":"2019-03-24T10:17:12.538Z","prop5":[1,2,3,4,5],"prop6":{"name":"gilad","test":123},"prop7":[{"name":"gilad1","test":123},{"name":"gilad2","test":123},{"name":"gilad3","test":123}]}`;
 
-        var handlerArray = [];
-        var parserSettings = { testStringForDate: true, mustBeJSON: false };
 
-        
-        function skipWhiteSpace(stringData, startIndex){
-          let counter=0;
-          while(stringData && stringData[startIndex+counter] === ' ' && startIndex+counter < stringData.length) counter++;
-          return counter;
-        }
-        /* create value parsing handler object */
-        function CreateHandler(openChar, handler, description) {
-            this.openChar = openChar;
-            this.handler = handler;
-            this.description = description;
-            this.isHandeling = (testVal) => { return this.openChar.indexOf(testVal) !== -1; }
-        }
-        /* string start */
-        function getStringValue(stringData, startIndex) {
-            let openChar = stringData[startIndex];
-            let counter = 1;
-            let foundEndString = false;
-            while (foundEndString === false && startIndex + counter < stringData.length) {
-                if (stringData[startIndex + counter] === stringData[startIndex] && stringData[startIndex + counter - 1] !== '\\') foundEndString = true;
-                else counter++;
+        var JSONParse = (function () {
+
+            function CreateHandler(openChar, handler, description) {
+                this.openChar = openChar;
+                this.handler = handler;
+                this.description = description;
+                this.isHandeling = (testVal) => { return this.openChar.indexOf(testVal) !== -1; }
             }
-            if (parserSettings && parserSettings.testStringForDate) {
-                let testString = stringData.substr(startIndex + 1, counter - 1);
-                var dateValue = Date.parse(testString);
+
+            function getDateFromString(stringToTest) {
+                var dateValue = Date.parse(stringToTest);
                 if (dateValue) {
-                    return { value: new Date(dateValue), length: counter + 1 };
+                    return new Date(dateValue);
                 }
-                return { value: testString, length: counter + 1 };
-
+                return null;
             }
-            else {
-                return { value: stringData.substr(startIndex + 1, counter - 1), length: counter + 1 };
-            }
-        }
-        handlerArray.push(new CreateHandler('\'"', getStringValue, 'String'));
-        /* string end */
-        /* number start */
-        var numbers = "1234567890.-+";
-        function getNumberValue(stringData, startIndex) {
-            let isFloat = false;
-            let counter = 0;
-            while (numbers.indexOf(stringData[startIndex + counter]) !== -1 && startIndex + counter < stringData.length) {
-                if (stringData[startIndex + counter] === '.') isFloat = true;
-                counter++;
-            }
-            let numberString = stringData.substr(startIndex, counter);
-            return { value: isFloat ? Number.parseFloat(numberString) : Number.parseInt(numberString), length: counter };
-        }
-        handlerArray.push(new CreateHandler(numbers, getNumberValue, 'Number'));
-        /* number end */
 
-
-        /* array start */
-        function getArrayValue(stringData, startIndex) {
-
-            let retValue = [];
-            let counter = 1;
-            let endOfArrayFound = false;
-            while (stringData && startIndex + counter < stringData.length && !endOfArrayFound) {                
-                counter+=skipWhiteSpace(stringData,startIndex+counter);
-                let valueObject = getValue(stringData, startIndex + counter);
-                if (valueObject) {
-                    retValue = [...retValue, valueObject.value];
-                    counter += valueObject.length
+            function CreateParser() {
+                handlerArray = [];
+                this.defaultParserSettings = { dateFromStringParseFunction: getDateFromString, mustBeJSON: false };
+                let numbers = "1234567890.-+";
+                // create functions 
+                skipWhiteSpace = (stringData, startIndex) => {
+                    let counter = 0;
+                    while (stringData && stringData[startIndex + counter] === ' ' && startIndex + counter < stringData.length) counter++;
+                    return counter;
                 }
-                else {
-                    throw (`Error parsing object at index ${startIndex + counter}`);
-                }                
-                counter+=skipWhiteSpace(stringData,startIndex+counter);
-                if (stringData[startIndex + counter] === ']') {
-                    endOfArrayFound = true;
-                }
-                else if (stringData[startIndex + counter] === ',') {
-                    counter++;
-                }
-                else {
-                    throw (`Error parsing object at index ${startIndex + counter}`);
-                }
-            }
+                // create handlers
 
-            return { value: retValue, length: counter + 1 };
-        }
-        handlerArray.push(new CreateHandler('[', getArrayValue, 'Arrays'));
-        /* array end  */
+                // property name
+                let getPropertyName = (stringData, startIndex, parserSettings) => {
+                    let propertyNameOpenChars = `"'`;
+                    let propertyNameErrorhars = `{[}]`;
+                    let counter = 0;
+                    let found = false;
+                    let hasError = false;
 
-        function getValue(stringData, startIndex) {
-            startIndex = startIndex ? startIndex : 0;
-            if (!stringData || typeof stringData !== 'string' || stringData.length === 0) {
-                throw (`Error in input params ${stringData}`);
-            }
-            if (startIndex === 0 && parserSettings.mustBeJSON) {
-                if (stringData[0] !== '{') {
-                    throw (`Error in input params ${stringData}`);
+                    while (!found && !hasError && startIndex + counter < stringData.length) {
+                        if (stringData[startIndex + counter] === ':') found = true;
+                        else if (propertyNameErrorhars.indexOf(stringData[startIndex + counter]) !== -1) hasError = true;
+                        else counter++;
+                    }
+                    if (!found | hasError) return null;
+                    let pnamePart = stringData.substr(startIndex, counter);
+                    if (propertyNameOpenChars.indexOf(pnamePart[0]) !== -1 && pnamePart[0] === pnamePart[pnamePart.length - 1]) {
+                        pnamePart = pnamePart.substr(1, pnamePart.length - 2);
+                    }
+                    return { name: pnamePart, length: counter + 1 };
                 }
-            }
-            let counter = 0;            
-            counter+=skipWhiteSpace(stringData,startIndex+counter);
-            let handler = null;
-            for (var i = 0; i < handlerArray.length && handler === null; i++) {
-                handler = handlerArray[i].isHandeling(stringData[startIndex + counter]) ? handlerArray[i] : null;
-            }
-            if (handler) {
-                var valueObject = handler.handler(stringData, startIndex + counter);
 
-                if (valueObject) {
-                    return valueObject;
-                }
-                else {
-                    throw (`Error parsing object at index ${startIndex + counter}`);
-                }
-            }
-            else {
-                throw (`Error parsing object at index ${startIndex + counter}`);
-            }
-        }
-        /* object Start */
-
-        var propertyNameOpenChars = `"'`;
-        var propertyNameErrorhars = `{[}]`;
-        function getPropertyName(stringData, startIndex) {
-            let counter = 0;
-            let found = false;
-            let hasError = false;
-
-            while (!found && !hasError && startIndex + counter < stringData.length) {
-                if (stringData[startIndex + counter] === ':') found = true;
-                else if (propertyNameErrorhars.indexOf(stringData[startIndex + counter]) !== -1) hasError = true;
-                else counter++;
-            }
-            if (!found | hasError) return null;
-            let pnamePart = stringData.substr(startIndex, counter);
-            if (propertyNameOpenChars.indexOf(pnamePart[0]) !== -1 && pnamePart[0] === pnamePart[pnamePart.length - 1]) {
-                pnamePart = pnamePart.substr(1, pnamePart.length - 2);
-            }
-            return { name: pnamePart, length: counter + 1 };
-        }
-
-        function getObjectValue(stringData, startIndex) {
-            let counter = 1;
-            let retObject = {};
-            let pname = null;
-            let endOfObjectFound = false;
-            while (stringData && startIndex + counter < stringData.length && !endOfObjectFound) {
-                pname = getPropertyName(stringData, startIndex + counter);
-                if (pname) {
-                    counter += pname.length;                    
-                    counter+=skipWhiteSpace(stringData,startIndex+counter);
-                    var valueObject = getValue(stringData, startIndex + counter);
-                    retObject[pname.name] = valueObject.value;
-                    counter += valueObject.length;
-                }
-                else {                    
-                    counter+=skipWhiteSpace(stringData,startIndex+counter);
-                    endOfObjectFound = stringData[startIndex + counter] === '}';
-                    if (!endOfObjectFound) {
-                        throw (`Error parsing object at index ${startIndex + counter}`);
+                // string
+                let getStringValue = (stringData, startIndex, parserSettings) => {
+                    let openChar = stringData[startIndex];
+                    let counter = 1;
+                    let foundEndString = false;
+                    while (foundEndString === false && startIndex + counter < stringData.length) {
+                        if (stringData[startIndex + counter] === stringData[startIndex] && stringData[startIndex + counter - 1] !== '\\') foundEndString = true;
+                        else counter++;
                     }
 
-                }                
-                counter+=skipWhiteSpace(stringData,startIndex+counter);
-                if (stringData[startIndex + counter] === ',') {
-                    counter++;
+                    if (parserSettings && parserSettings.dateFromStringParseFunction && typeof parserSettings.dateFromStringParseFunction === 'function' ) {
+                        let testString = stringData.substr(startIndex + 1, counter - 1);
+                        let dateValue = parserSettings.dateFromStringParseFunction(testString);
+                        if (dateValue) {
+                            return { value: dateValue, length: counter + 1 };
+                        }
+                        return { value: testString, length: counter + 1 };
+
+                    }
+                    else {
+                        return { value: stringData.substr(startIndex + 1, counter - 1), length: counter + 1 };
+                    }
                 }
-                else if (stringData[startIndex + counter] === '}') {
-                    endOfObjectFound = true;
+                // numbers
+                let getNumberValue = (stringData, startIndex, parserSettings) => {
+                    let isFloat = false;
+                    let counter = 0;
+                    while (numbers.indexOf(stringData[startIndex + counter]) !== -1 && startIndex + counter < stringData.length) {
+                        if (stringData[startIndex + counter] === '.') isFloat = true;
+                        counter++;
+                    }
+                    let numberString = stringData.substr(startIndex, counter);
+                    return { value: isFloat ? Number.parseFloat(numberString) : Number.parseInt(numberString), length: counter };
                 }
-                else {
-                    throw (`Error parsing object at index ${startIndex + counter}`);
+                // array
+                let getArrayValue = (stringData, startIndex, parserSettings) => {
+                    let retValue = [];
+                    let counter = 1;
+                    let endOfArrayFound = false;
+                    while (stringData && startIndex + counter < stringData.length && !endOfArrayFound) {
+                        counter += skipWhiteSpace(stringData, startIndex + counter);
+                        let valueObject = getValueUsingHandlers(stringData, startIndex + counter, parserSettings);
+                        if (valueObject) {
+                            retValue = [...retValue, valueObject.value];
+                            counter += valueObject.length
+                        }
+                        else {
+                            throw (`Error parsing object at index ${startIndex + counter}`);
+                        }
+                        counter += skipWhiteSpace(stringData, startIndex + counter);
+                        if (stringData[startIndex + counter] === ']') {
+                            endOfArrayFound = true;
+                        }
+                        else if (stringData[startIndex + counter] === ',') {
+                            counter++;
+                        }
+                        else {
+                            throw (`Error parsing object at index ${startIndex + counter}`);
+                        }
+                    }
+
+                    return { value: retValue, length: counter + 1 };
+                }
+
+                // object 
+                let getObjectValue = (stringData, startIndex, parserSettings) => {
+                    let counter = 1;
+                    let retObject = {};
+                    let pname = null;
+                    let endOfObjectFound = false;
+                    while (stringData && startIndex + counter < stringData.length && !endOfObjectFound) {
+                        pname = getPropertyName(stringData, startIndex + counter);
+                        if (pname) {
+                            counter += pname.length;
+                            counter += skipWhiteSpace(stringData, startIndex + counter);
+                            var valueObject = getValueUsingHandlers(stringData, startIndex + counter, parserSettings);
+                            retObject[pname.name] = valueObject.value;
+                            counter += valueObject.length;
+                        }
+                        else {
+                            counter += skipWhiteSpace(stringData, startIndex + counter);
+                            endOfObjectFound = stringData[startIndex + counter] === '}';
+                            if (!endOfObjectFound) {
+                                throw (`Error parsing object at index ${startIndex + counter}`);
+                            }
+
+                        }
+                        counter += skipWhiteSpace(stringData, startIndex + counter);
+                        if (stringData[startIndex + counter] === ',') {
+                            counter++;
+                        }
+                        else if (stringData[startIndex + counter] === '}') {
+                            endOfObjectFound = true;
+                        }
+                        else {
+                            throw (`Error parsing object at index ${startIndex + counter}`);
+                        }
+                    }
+
+                    return { value: retObject, length: counter + 1 };
+                }
+
+                let getValueUsingHandlers = (stringData, startIndex, parserSettings) => {
+                    startIndex = startIndex ? startIndex : 0;
+                    if (!stringData || typeof stringData !== 'string' || stringData.length === 0) {
+                        throw (`Error in input params ${stringData}`);
+                    }
+                    if (startIndex === 0 && parserSettings.mustBeJSON) {
+                        if (stringData[0] !== '{') {
+                            throw (`Error in input params ${stringData}`);
+                        }
+                    }
+                    let counter = 0;
+                    counter += skipWhiteSpace(stringData, startIndex + counter);
+                    let handler = null;
+                    for (var i = 0; i < handlerArray.length && handler === null; i++) {
+                        handler = handlerArray[i].isHandeling(stringData[startIndex + counter]) ? handlerArray[i] : null;
+                    }
+                    if (handler) {
+                        var valueObject = handler.handler(stringData, startIndex + counter, parserSettings);
+
+                        if (valueObject) {
+                            return valueObject;
+                        }
+                        else {
+                            throw (`Error parsing object at index ${startIndex + counter}`);
+                        }
+                    }
+                    else {
+                        throw (`Error parsing object at index ${startIndex + counter}`);
+                    }
+                }
+
+                // init 
+                handlerArray.push(new CreateHandler('\'"', getStringValue, 'String'));
+                handlerArray.push(new CreateHandler(numbers, getNumberValue, 'Number'));
+                handlerArray.push(new CreateHandler('[', getArrayValue, 'Arrays'));
+                handlerArray.push(new CreateHandler('{', getObjectValue, 'Objects'));
+
+                this.parse = (stringData, parserSettings) => {
+                    parserSettings = parserSettings ? parserSettings : { ...this.defaultParserSettings };
+                    var valueObject = getValueUsingHandlers(stringData, 0, parserSettings);
+                    if (valueObject) return valueObject.value;
+                    return null;
                 }
             }
 
-            return { value: retObject, length: counter + 1 };
-        }
+            return new CreateParser();
+        })();
 
-        handlerArray.push(new CreateHandler('{', getObjectValue, 'Objects'));
-        /* object End */
-        function JSONparse(stringData) {
-            var valueObject = getValue(stringData);
-            if (valueObject) return valueObject.value;
-            return null;
-        }
-
-        console.log(JSONparse(JSON.stringify({ name: 'gilad', number: 123, 'test': -44, obj: { inner1: 123 }, arr: [1, 2, 3] })));
-
-
-        console.log(JSONparse(jsonString));
-        console.log(JSONparse(JSON.stringify(tmp)));
-        console.log(JSONparse("\"gilad\""));
-        console.log(JSONparse("1234"));
-        console.log(JSONparse("[1234,'gggg',{aaa: 'sdfsdf'}]"));
+        console.log(JSONParse.parse(JSON.stringify({ name: 'gilad', number: 123, 'test': -44, obj: { inner1: 123 }, arr: [1, 2, 3] })));
+        console.log(JSONParse.parse(jsonString));
+        console.log(JSONParse.parse(JSON.stringify(tmp)));
+        console.log(JSONParse.parse("\"gilad\""));
+        console.log(JSONParse.parse("1234"));
+        console.log(JSONParse.parse("[1234,'gggg',{aaa: 'sdfsdf'}]"));
         //tmp
 
     </script>
