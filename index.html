@@ -15,7 +15,7 @@
             prop7: [{ name: 'gilad1', test: 123 }, { name: 'gilad2', test: 123 }, { name: 'gilad3', test: 123 }]
         };
         console.log(tmp);
-        let jsonString = `{"prop1":"string","prop2":-123,"prop4":"2019-03-24T10:17:12.538Z","prop5":[1,2,3,4,5],"prop6":{"name":"gilad","test":123},"prop7":[{"name":"gilad1","test":123},{"name":"gilad2","test":123},{"name":"gilad3","test":123}]}`;
+        let jsonString = `{"prop1":"string","prop2": -123 ,"prop4":"2019-03-24T10:17:12.538Z","prop5":[1,2,3,4,5],"prop6":{"name":"gilad","test":123},"prop7":[{"name":"gilad1","test":123},{"name":"gilad2","test":123},{"name":"gilad3","test":123}]}`;
 
 
 
@@ -64,7 +64,7 @@
             }
         }
         function getPropertyName(stringData){
-            let index =stringData.indexOf(':'); 
+            let index =  stringData.indexOf(':'); 
             let namePart = index !== -1 ? stringData.substr(0,index).trim() : null;
             if(namePart && namePart.length > 2){
                 return  { name : namePart.substr(1,namePart.length-2) , length : index +1};
