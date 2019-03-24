@@ -187,7 +187,7 @@
             if (!stringData || typeof stringData !== 'string' || stringData.length === 0 || !stringData.startsWith('{')) {
                 return null;
             }
-            var valueObject = getObjectValue(stringData, 0);
+            var valueObject = getValue(stringData, 0);
             if (valueObject) return valueObject.value;
             return null;
         }
