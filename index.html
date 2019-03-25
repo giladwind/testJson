@@ -10,7 +10,7 @@
             prop1: 'string',
             prop2: -123,
             proppBool: true,
-            propbool2 : false,
+            propbool2: false,
             prop4: new Date(Date.now()),
             prop5: [1, 2, 3, 4, 5, "sdfsdf"],
             prop6: { name: 'gilad', test: 123 },
@@ -70,7 +70,7 @@
                     return { name: pnamePart, length: counter + 1 };
                 }
 
-
+                // bool
                 let getBoolValue = (stringData, startIndex, parserSettings) => {
                     let trueLength = 'true'.length;
                     let falseLength = 'false'.length;
@@ -83,7 +83,7 @@
                         return { value: false, length: falseLength };
                     }
                 }
-                // string date and bool
+                // string date 
                 let getStringDateValue = (stringData, startIndex, parserSettings) => {
                     let openChar = stringData[startIndex];
                     let counter = 1;
@@ -93,12 +93,6 @@
                         else counter++;
                     }
                     let testString = stringData.substr(startIndex + 1, counter - 1);
-
-                    if (testString === 'true' || testString === 'false') {
-                        debugger;
-                        let boolValue = testString === 'true';
-                        return { value: boolValue, length: counter + 1 };
-                    }
 
                     if (parserSettings && parserSettings.dateFromStringParseFunction && typeof parserSettings.dateFromStringParseFunction === 'function') {
 
