@@ -9,6 +9,8 @@
         let tmp = {
             prop1: 'string',
             prop2: -123,
+            proppBool: true,
+            propbool2 : false,
             prop4: new Date(Date.now()),
             prop5: [1, 2, 3, 4, 5, "sdfsdf"],
             prop6: { name: 'gilad', test: 123 },
@@ -68,8 +70,21 @@
                     return { name: pnamePart, length: counter + 1 };
                 }
 
-                // string
-                let getStringValue = (stringData, startIndex, parserSettings) => {
+
+                let getBoolValue = (stringData, startIndex, parserSettings) => {
+                    let trueLength = 'true'.length;
+                    let falseLength = 'false'.length;
+                    if (stringData && stringData[startIndex] === 't' && stringData.length > startIndex + trueLength &&
+                        stringData.substr(startIndex, trueLength) === 'true') {
+                        return { value: true, length: trueLength };
+                    }
+                    if (stringData && stringData[startIndex] === 'f' && stringData.length > startIndex + falseLength &&
+                        stringData.substr(startIndex, falseLength) === 'false') {
+                        return { value: false, length: falseLength };
+                    }
+                }
+                // string date and bool
+                let getStringDateValue = (stringData, startIndex, parserSettings) => {
                     let openChar = stringData[startIndex];
                     let counter = 1;
                     let foundEndString = false;
@@ -77,9 +92,16 @@
                         if (stringData[startIndex + counter] === stringData[startIndex] && stringData[startIndex + counter - 1] !== '\\') foundEndString = true;
                         else counter++;
                     }
+                    let testString = stringData.substr(startIndex + 1, counter - 1);
 
-                    if (parserSettings && parserSettings.dateFromStringParseFunction && typeof parserSettings.dateFromStringParseFunction === 'function' ) {
-                        let testString = stringData.substr(startIndex + 1, counter - 1);
+                    if (testString === 'true' || testString === 'false') {
+                        debugger;
+                        let boolValue = testString === 'true';
+                        return { value: boolValue, length: counter + 1 };
+                    }
+
+                    if (parserSettings && parserSettings.dateFromStringParseFunction && typeof parserSettings.dateFromStringParseFunction === 'function') {
+
                         let dateValue = parserSettings.dateFromStringParseFunction(testString);
                         if (dateValue) {
                             return { value: dateValue, length: counter + 1 };
@@ -88,7 +110,7 @@
 
                     }
                     else {
-                        return { value: stringData.substr(startIndex + 1, counter - 1), length: counter + 1 };
+                        return { value: testString, length: counter + 1 };
                     }
                 }
                 // numbers
@@ -202,7 +224,8 @@
                 }
 
                 // init 
-                handlerArray.push(new CreateHandler('\'"', getStringValue, 'String'));
+                handlerArray.push(new CreateHandler('\'"', getStringDateValue, 'String'));
+                handlerArray.push(new CreateHandler('tf', getBoolValue, 'Bool'));
                 handlerArray.push(new CreateHandler(numbers, getNumberValue, 'Number'));
                 handlerArray.push(new CreateHandler('[', getArrayValue, 'Arrays'));
                 handlerArray.push(new CreateHandler('{', getObjectValue, 'Objects'));
@@ -222,7 +245,8 @@
         console.log('date will be date');
         console.log(JSONParse.parse(jsonString));
         console.log('date will be string');
-        console.log(JSONParse.parse(JSON.stringify(tmp),{}));
+
+        console.log(JSONParse.parse(JSON.stringify(tmp), {}));
         console.log(JSONParse.parse("\"gilad\""));
         console.log(JSONParse.parse("1234"));
         console.log(JSONParse.parse("[1234,'gggg',{aaa: 'sdfsdf'}]"));
